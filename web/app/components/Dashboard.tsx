@@ -18,8 +18,6 @@ const MapClient = dynamic(() => import('./MapClient'), {
     </div>
   ),
 });
-import FloatingRegionCards from './FloatingRegionCards';
-import MapInsightCards from './MapInsightCards';
 import ForensicPanel from './ForensicPanel';
 import Icon from './Icon';
 import TourModal from './TourModal';
@@ -110,9 +108,6 @@ export default function Dashboard({ obras, performance }: Props) {
             Toca una región para abrir el panel forense
           </div>
         )}
-
-        <FloatingRegionCards layerId={activeLayer} rows={rankRows} onSelect={onSelectRegion} />
-        <MapInsightCards layerId={activeLayer} rows={performance} />
 
         {selectedObra && <ForensicPanel obra={selectedObra} onClose={() => setSelectedObra(null)} />}
       </main>

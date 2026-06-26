@@ -44,7 +44,7 @@ export default function MapClient({ obras, performance, activeLayer, focus, onSe
           const t = cfg.rampMode === 'pct' ? Math.min(1, v / 100) : v / max;
           return {
             type: 'Feature' as const,
-            properties: { region: r.region, color: rampColor(cfg.ramp, cfg.invert ? 1 - t : t), radius: 9 + t * 22 },
+            properties: { region: r.region, color: cfg.accent, radius: 4 + t * 7 },
             geometry: { type: 'Point' as const, coordinates: [r.lng, r.lat] },
           };
         }),
@@ -119,11 +119,11 @@ export default function MapClient({ obras, performance, activeLayer, focus, onSe
         id: 'obras-pts', type: 'circle', source: 'obras-src',
         layout: { visibility: 'none' },
         paint: {
-          'circle-radius': ['interpolate', ['linear'], ['get', 'score'], 0, 6, 100, 17],
-          'circle-color': ['interpolate', ['linear'], ['get', 'score'], 0, '#eab308', 45, '#f97316', 75, '#ef4444'],
-          'circle-opacity': 0.9,
+          'circle-radius': ['interpolate', ['linear'], ['get', 'score'], 0, 4, 100, 11],
+          'circle-color': LAYERS.obras.accent,
+          'circle-opacity': 0.88,
           'circle-stroke-color': '#ffffff',
-          'circle-stroke-width': 1.6,
+          'circle-stroke-width': 1.4,
         },
       });
 

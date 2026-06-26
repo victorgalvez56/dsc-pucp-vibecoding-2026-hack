@@ -52,3 +52,27 @@ export async function queryWithTimeout<T = Record<string, unknown>>(
     client.release();
   }
 }
+
+/**
+ * Ejecuta SQL generado por el Agente IA en una transacción READ ONLY con timeout.
+ * Doble candado: aunque la validación de texto fallara, Postgres rechaza cualquier
+ * escritura dentro de `BEGIN TRANSACTION READ ONLY`. Siempre hace ROLLBACK.
+ */
+export async function queryReadOnly<T = Record<string, unknown>>(
+  sql: string,
+  timeoutMs = 8_000,
+): Promise<T[]> {
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN TRANSACTION READ ONLY');
+    await client.query(`SET LOCAL statement_timeout = ${timeoutMs}`);
+    const result = await client.query(sql);
+    await client.query('ROLLBACK');
+    return result.rows as T[];
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}

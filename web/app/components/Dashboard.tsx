@@ -21,6 +21,7 @@ const MapClient = dynamic(() => import('./MapClient'), {
 import FloatingRegionCards from './FloatingRegionCards';
 import MapInsightCards from './MapInsightCards';
 import ForensicPanel from './ForensicPanel';
+import AgentChat from './AgentChat';
 import Icon from './Icon';
 import TourModal from './TourModal';
 
@@ -115,6 +116,8 @@ export default function Dashboard({ obras, performance }: Props) {
         <MapInsightCards layerId={activeLayer} rows={performance} />
 
         {selectedObra && <ForensicPanel obra={selectedObra} onClose={() => setSelectedObra(null)} />}
+
+        <AgentChat />
       </main>
     </div>
     <TourModal />

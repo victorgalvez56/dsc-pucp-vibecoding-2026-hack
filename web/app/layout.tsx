@@ -1,24 +1,43 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import ServiceWorkerRegister from './components/ServiceWorkerRegister';
 
 export const metadata: Metadata = {
-  title: 'Vigía — Monitor de Obras Públicas Perú',
+  applicationName: 'Vigía',
+  title: 'Vigía · Monitor del Estado Peruano',
   description:
-    'Detecta irregularidades en contratos y obras del Estado peruano con scoring explicable.',
+    'Cuatro capas de datos abiertos del Estado peruano —presupuesto, servicios, planilla y obras— en un solo mapa con scoring de riesgo explicable.',
+  appleWebApp: {
+    capable: true,
+    title: 'Vigía',
+    statusBarStyle: 'default',
+  },
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#eef1ff',
+  colorScheme: 'light',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className="h-full">
       <head>
-        {/* MapLibre GL JS CSS — cargado via CDN para no complicar el bundle */}
+        {/* Tipografías distintivas (Fontshare, gratuitas) */}
+        <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="" />
         <link
-          href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+          href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600,700&f[]=satoshi@400,500,700,900&display=swap"
           rel="stylesheet"
         />
+        {/* El CSS de MapLibre GL v5 se importa dentro de MapClient.tsx */}
       </head>
-      <body className="h-full bg-slate-950 text-white antialiased">
+      <body className="h-full overflow-hidden font-sans text-ink antialiased">
         {children}
+        <ServiceWorkerRegister />
       </body>
     </html>
   );

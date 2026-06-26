@@ -2,24 +2,64 @@
 @tailwind components;
 @tailwind utilities;
 
-/* MapLibre canvas fills its container */
-.maplibregl-map {
-  width: 100% !important;
-  height: 100% !important;
+:root {
+  --font-display: 'Clash Display', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
 }
 
-.maplibregl-canvas {
-  outline: none;
+@layer base {
+  body {
+    /* Atmósfera luminosa: glow periwinkle arriba-derecha + coral abajo-derecha */
+    background:
+      radial-gradient(1100px 620px at 78% -12%, rgba(129, 140, 248, 0.30), transparent 60%),
+      radial-gradient(820px 520px at 96% 96%, rgba(244, 114, 182, 0.16), transparent 62%),
+      radial-gradient(700px 600px at -8% 40%, rgba(94, 234, 212, 0.12), transparent 60%),
+      linear-gradient(158deg, #eef1ff 0%, #f5f3ff 46%, #fdfbff 100%);
+    background-attachment: fixed;
+  }
 }
 
-/* Panel scroll */
-::-webkit-scrollbar {
-  width: 4px;
+@layer components {
+  /* Vidrio esmerilado — primitiva base */
+  .glass {
+    background: rgba(255, 255, 255, 0.62);
+    backdrop-filter: blur(22px) saturate(150%);
+    -webkit-backdrop-filter: blur(22px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: 0 10px 40px -8px rgba(30, 34, 90, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  }
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.82);
+    backdrop-filter: blur(26px) saturate(160%);
+    -webkit-backdrop-filter: blur(26px) saturate(160%);
+    border: 1px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 18px 50px -12px rgba(30, 34, 90, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+  /* Texto numérico tabular */
+  .nums { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  /* Oculta scrollbar pero mantiene scroll */
+  .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
 }
-::-webkit-scrollbar-track {
-  background: transparent;
+
+/* MapLibre ocupa su contenedor */
+.maplibregl-map { width: 100% !important; height: 100% !important; font-family: var(--font-body) !important; }
+.maplibregl-canvas { outline: none; }
+.maplibregl-ctrl-attrib { font-size: 9px; opacity: 0.6; }
+.maplibregl-ctrl-group {
+  border-radius: 14px !important;
+  overflow: hidden;
+  box-shadow: 0 8px 24px -6px rgba(30, 34, 90, 0.22) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
 }
-::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 2px;
+
+/* Scrollbar fino */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(118, 124, 170, 0.35); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(118, 124, 170, 0.55); }
+
+/* Respeto a prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }
 }

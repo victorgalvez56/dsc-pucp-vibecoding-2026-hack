@@ -49,3 +49,43 @@ export interface ContratistaStat {
   n_obras: number;
   score_max: number;
 }
+
+// ─── Nuevas capas: Presupuesto · Servicios · Planilla ─────────────────────────
+
+export type MapLayer = 'presupuesto' | 'servicios' | 'planilla' | 'obras';
+
+export interface PerformanceRegional {
+  region: string;
+  lat: number;
+  lng: number;
+  // Presupuesto (MEF)
+  pim_total: number;
+  devengado_total: number;
+  pct_ejecucion: number;
+  // Servicios (MINSA + MINEDU)
+  n_escuelas: number;
+  n_postas: number;
+  n_hospitales: number;
+  n_servicios: number;
+  // Planilla (SERVIR)
+  n_empleados: number;
+  sueldo_promedio: number;
+  // Obras (OCDS + INFOBRAS)
+  n_obras_riesgo: number;
+  score_promedio: number;
+  monto_riesgo: number;
+}
+
+export interface ServicioBasico {
+  id: number;
+  tipo: string;           // escuela | posta_salud | hospital
+  nombre: string | null;
+  region: string | null;
+  provincia: string | null;
+  distrito: string | null;
+  estado: string | null;
+  nivel: string | null;
+  lat: number | null;
+  lng: number | null;
+  fuente: string;         // minedu | minsa
+}

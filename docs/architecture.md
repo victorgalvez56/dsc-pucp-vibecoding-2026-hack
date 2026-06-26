@@ -1,145 +1,174 @@
-# Arquitectura — Transparentape v2
+# Arquitectura — Vigía
 
-> Mapa abierto de obras públicas del Estado peruano con detección automática de
-> irregularidades. Cruza datos abiertos fragmentados (OCDS, OECE, INFOBRAS) y los
-> pone sobre un mapa que cualquier ciudadano entiende, marcando automáticamente
-> las obras con señales de riesgo.
+> En un mar de datos públicos opacos, **Vigía** otea desde lo alto y avista los
+> arrecifes ocultos —las irregularidades en la contratación del Estado— antes de
+> que el ciudadano naufrague en la burocracia.
 
-## 1. Vista de módulos
+Plataforma que **scrapea, cruza y vuelve legibles** los datos abiertos del Estado
+peruano sobre contratación y obras públicas, marcando automáticamente las obras
+con señales de riesgo.
+
+---
+
+## 1. Estilo arquitectónico
+
+**Lakehouse Medallion + Postgres analítico** (arquitectura por capas).
+
+- **Ingesta** desacoplada del *serving*: un re-scrape roto nunca tumba lo que ve
+  el ciudadano.
+- **Lógica de negocio centralizada y auditable** en la base de datos (scoring de
+  riesgo como función SQL, con su desglose explicable).
+- **API delgada y tipada**; frontera *server / client* clara en el front.
+- **Ports & adapters solo donde es honesto**: en la ingesta, un *adapter* por
+  fuente del Estado traduce un formato externo sucio a un modelo canónico. No se
+  etiqueta la app entera como "hexagonal", porque la lógica de dominio vive a
+  propósito en Postgres (decisión de [ADR 0002](adr/0002-ports-adapters-solo-ingesta.md)).
+
+## 2. Capas (Medallion)
 
 ```mermaid
 flowchart LR
     subgraph Fuentes["Fuentes abiertas del Estado"]
-        OCDS["OCDS\nOpen Contracting\n(contratos, RUC, montos)"]
-        OECE["OECE\ndatosabiertos.gob.pe\n(sanciones / inhabilitaciones)"]
-        INFOBRAS["INFOBRAS\nContraloría\n(avance físico, fotos, coords)"]
+        F1["Contratación pública\n(OCDS)"]
+        F2["Sanciones / inhabilitaciones\n(datos abiertos)"]
+        F3["Avance de obra\n(Contraloría)"]
     end
 
-    subgraph ETL["ETL (Python)"]
-        DL["download_ocds"]
-        FILTER["filter_lima"]
-        LOAD["load_supabase"]
-        FLAGS["load_red_flags"]
-        GEO["geocode"]
-        SCRAPE["infobras_scrape"]
-        XREF["infobras_crossref"]
-        SCORE["compute_red_flag_scores()"]
+    subgraph Bronze["Bronze — crudo"]
+        B["Descarga / scrape tal cual\n(jsonl.gz · csv · html)"]
     end
 
-    subgraph DB["PostgreSQL (Supabase)"]
-        T_OBRAS[("obras")]
-        T_FLAGS[("red_flags")]
-        T_INFO[("infobras_full")]
-        V_RIESGO[["VIEW obras_riesgo"]]
+    subgraph Silver["Silver — normalizado"]
+        S1[("obras")]
+        S2[("sanciones")]
+        S3[("avance_obra")]
     end
 
-    subgraph Web["App web (Next.js 16 / React 19)"]
-        API["API routes\n/api/obras, /api/forensics, /api/stats"]
-        GLOBE["Globo 3D + mapa\n(three.js / MapLibre)"]
-        FORENSE["Panel forense\n(score + razones + timeline)"]
-        STREET["Street View antes/después"]
+    subgraph Gold["Gold — servible"]
+        G[["MATERIALIZED VIEW\nobras_riesgo\n(cruzado + scoreado)"]]
     end
 
-    OCDS --> DL --> FILTER --> LOAD --> T_OBRAS
-    OECE --> FLAGS --> T_FLAGS
-    INFOBRAS --> SCRAPE --> T_INFO
-    T_OBRAS --> GEO --> T_OBRAS
-    T_INFO --> XREF --> T_OBRAS
-    T_FLAGS --> SCORE
-    T_INFO --> SCORE
-    T_OBRAS --> SCORE --> T_OBRAS
-    T_OBRAS --> V_RIESGO
+    subgraph App["Aplicación"]
+        API["API (route handlers · SQL directo)"]
+        UI["Mapa + panel forense (React)"]
+    end
 
-    DB --> API --> GLOBE
-    API --> FORENSE
-    API --> STREET
+    F1 --> B
+    F2 --> B
+    F3 --> B
+    B -->|"adapter por fuente\n(normaliza → canónico)"| S1
+    B --> S2
+    B --> S3
+    S1 -->|"entity resolution\n(RUC + fuzzy nombre)"| G
+    S2 --> G
+    S3 --> G
+    G --> API --> UI
 ```
 
-## 2. Flujo de datos (ingesta → riesgo → ciudadano)
+| Capa | Qué hace | Tecnología | Por qué (honesto / jury-proof) |
+|---|---|---|---|
+| **Bronze (ingesta)** | 1 *adapter* por fuente: descarga/scrape → guarda crudo. Idempotente, re-ejecutable por cron. | Python · requests · BeautifulSoup · ijson | El dato del Estado es heterogéneo y sucio; aislar cada formato externo en su adapter evita acoplar el resto del sistema. Batch + cron, **no** streaming, porque el dato público cambia a diario, no por segundo. |
+| **Silver (normalización)** | Modela el crudo a un esquema canónico normalizado. | PostgreSQL | Una sola forma canónica permite cruzar fuentes que escriben la misma entidad de formas distintas. |
+| **Gold (analítica)** | *Entity resolution* por RUC + nombre (`pg_trgm`), **scoring de riesgo como función SQL**, expuesto como **vista materializada**. | PostgreSQL (`pg_trgm`, `tsvector`) | Cruzar por RUC es un problema de JOIN + fuzzy matching → Postgres lo hace nativo, sin compute extra. La lógica en la base es auditable y reproducible. |
+| **API** | Route handlers delgados, tipados, cacheados; reads pesados con `statement_timeout`. | Next.js Route Handlers · `pg` | SQL directo da control fino para queries forenses y el read grande del mapa. Un API separado duplicaría el despliegue y subiría el riesgo. |
+| **Presentación** | Shell RSC + islas cliente (mapa), panel forense (score + razones). | React · MapLibre / three.js | RSC para lo estático/KPIs; cliente solo donde hay interacción. |
+
+## 3. Flujo de datos (ingesta → riesgo → ciudadano)
 
 ```mermaid
 sequenceDiagram
-    participant C as CronJob / run_pipeline.py
-    participant S as Fuentes (OCDS/OECE/INFOBRAS)
-    participant DB as Postgres (Supabase)
-    participant API as Next.js API
+    participant C as Cron / pipeline
+    participant S as Fuentes del Estado
+    participant DB as Postgres
+    participant API as API (SQL)
     participant U as Ciudadano
 
-    C->>S: descarga / scrape periódico
-    C->>DB: UPSERT obras, red_flags, infobras_full
-    C->>DB: SELECT compute_red_flag_scores()
-    Note over DB: cruce RUC↔sanciones,<br/>sobrecosto, paralización,<br/>adjudicación directa → score [0-100]
+    C->>S: descarga / scrape periódico (Bronze)
+    C->>DB: normaliza a esquema canónico (Silver)
+    C->>DB: entity resolution + compute_red_flag_scores() (Gold)
+    Note over DB: cruce RUC↔sanciones, sobrecosto,<br/>obra paralizada, adjudicación directa → score [0-100]
+    C->>DB: REFRESH MATERIALIZED VIEW obras_riesgo
     U->>API: abre el mapa / filtra por riesgo
     API->>DB: SELECT * FROM obras_riesgo
-    DB-->>API: obras + red_flag_score + reasons
-    API-->>U: globo 3D + panel forense explicable
+    DB-->>API: obras + score + razones explicables
+    API-->>U: mapa + panel forense (por qué está marcada)
 ```
 
-## 3. Modelo de datos (núcleo)
+## 4. Modelo de datos (núcleo)
 
 ```mermaid
 erDiagram
-    obras ||--o{ red_flags : "supplier_ruc = ruc"
-    obras ||--o| infobras_full : "infobras_code = codigo_infobras"
+    obras ||--o{ sanciones : "ruc_contratista = ruc"
+    obras ||--o| avance_obra : "codigo_obra = codigo"
 
     obras {
-        text ocid PK
-        text country
-        text buyer_name
-        text supplier_name
-        text supplier_ruc
-        numeric award_amount
-        numeric contract_amount
-        text procurement_method
+        text id_contrato PK
+        text entidad
+        text contratista
+        text ruc_contratista
+        numeric monto_adjudicado
+        numeric monto_contrato
+        text metodo_adjudicacion
         numeric lat
         numeric lng
-        text infobras_code
-        boolean is_red_flag
         int red_flag_score
         jsonb red_flag_reasons
     }
-    red_flags {
+    sanciones {
         text ruc
         text tipo
         text descripcion
         boolean vigente
     }
-    infobras_full {
-        int codigo_infobras PK
+    avance_obra {
+        text codigo PK
         numeric avance_fisico_pct
         text estado
         int n_modificaciones_plazo
-        numeric monto_aprobacion
     }
 ```
 
-## 4. Detección de irregularidades (scoring)
+## 5. Detección de irregularidades (scoring explicable)
 
-El corazón del proyecto. `compute_red_flag_scores()` (ver
-[`supabase/migrations/06_red_flag_score.sql`](../supabase/migrations/06_red_flag_score.sql))
-calcula un score ponderado y **explicable** por obra:
+Una función SQL calcula un **score ponderado [0-100]** por obra y guarda el
+desglose en `red_flag_reasons` (JSONB), para mostrarle al ciudadano **por qué**
+una obra está marcada — no es una caja negra.
 
 | Señal | Peso | Fuente |
 |---|---|---|
-| Contratista sancionado (RUC en OECE) | 35 | OECE |
-| Inhabilitación judicial vigente | +15 | OECE |
-| Sobrecosto (contrato > adjudicado +15%) | 25 | OCDS |
-| Obra paralizada (avance bajo + estado) | 20 | INFOBRAS |
-| Obra vencida (fin programado pasó, avance < 100%) | 15 | INFOBRAS |
-| Adjudicación directa (sin competencia) | 10 | OCDS |
-| ≥3 modificaciones de plazo | 10 | INFOBRAS |
-| Contratista recurrente (≥10 adjudicaciones) | 10 | OCDS |
+| Contratista sancionado (RUC en sanciones) | 35 | Sanciones |
+| Inhabilitación judicial vigente | +15 | Sanciones |
+| Sobrecosto (contrato > adjudicado +15%) | 25 | Contratación |
+| Obra paralizada (avance bajo + estado) | 20 | Avance de obra |
+| Obra vencida (fin programado pasó, avance < 100%) | 15 | Avance de obra |
+| Adjudicación directa (sin competencia) | 10 | Contratación |
+| ≥3 modificaciones de plazo | 10 | Avance de obra |
+| Contratista recurrente (≥10 adjudicaciones) | 10 | Contratación |
 
-> Cada obra guarda `red_flag_reasons` (JSONB) con el desglose, para mostrarle al
-> ciudadano **por qué** está marcada — no es una caja negra.
-
-## 5. Despliegue
+## 6. Despliegue
 
 ```mermaid
 flowchart LR
-    GH["GitHub repo"] --> VERCEL["Vercel\n(Next.js + API routes)"]
-    SUPA["Supabase\n(Postgres gestionado)"] --> VERCEL
-    CRON["Vercel Cron"] --> ETL["run_pipeline.py / re-ingesta"]
-    ETL --> SUPA
-    VERCEL --> USER["Ciudadano (navegador)"]
+    GH["GitHub"] --> VERCEL["Vercel\n(Next.js + API)"]
+    SUPA["Postgres gestionado\n(Supabase)"] --> VERCEL
+    CRON["Cron"] --> PIPE["pipeline de ingesta"]
+    PIPE --> SUPA
+    VERCEL --> USER["Ciudadano"]
+```
+
+## 7. Estructura del repositorio
+
+```
+.
+├── README.md
+├── docs/
+│   ├── architecture.md          # este documento
+│   ├── bases.md                 # bases de la hackathon
+│   └── adr/                     # decisiones de arquitectura
+│       ├── 0001-medallion-postgres-analitico.md
+│       └── 0002-ports-adapters-solo-ingesta.md
+├── etl/                         # Bronze — adapters de ingesta (1 por fuente)
+├── supabase/
+│   └── migrations/              # esquema Silver/Gold + función de scoring
+└── web/                         # Next.js — API + presentación
 ```

@@ -48,6 +48,8 @@ export default function AgentChat() {
     setMsgs((m) => [...m, { role: 'user', text: q }]);
     setLoading(true);
     scrollDown();
+    // Delay "pensando": los puntitos se ven al menos ~1s aunque la BD responda al instante.
+    const thinking = new Promise((r) => setTimeout(r, 900 + Math.random() * 700));
     try {
       const res = await fetch('/api/agent', {
         method: 'POST',
@@ -55,9 +57,11 @@ export default function AgentChat() {
         body: JSON.stringify({ question: q }),
       });
       const data = await res.json();
+      await thinking;
       if (!res.ok) throw new Error(data?.error ?? 'Error');
       setMsgs((m) => [...m, { role: 'agent', text: data.answer, sql: data.sql, rowCount: data.rowCount }]);
     } catch (err) {
+      await thinking;
       setMsgs((m) => [...m, { role: 'agent', text: `⚠️ ${(err as Error).message}` }]);
     } finally {
       setLoading(false);

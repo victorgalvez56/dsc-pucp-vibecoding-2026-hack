@@ -19,6 +19,7 @@ const MapClient = dynamic(() => import('./MapClient'), {
   ),
 });
 import ForensicPanel from './ForensicPanel';
+import AgentChat from './AgentChat';
 import Icon from './Icon';
 import TourModal from './TourModal';
 
@@ -110,6 +111,8 @@ export default function Dashboard({ obras, performance }: Props) {
         )}
 
         {selectedObra && <ForensicPanel obra={selectedObra} onClose={() => setSelectedObra(null)} />}
+
+        <AgentChat />
       </main>
     </div>
     <TourModal />

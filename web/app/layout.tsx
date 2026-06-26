@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import ServiceWorkerRegister from './components/ServiceWorkerRegister';
+import PwaInstallPrompt from './components/PwaInstallPrompt';
 
 export const metadata: Metadata = {
   applicationName: 'Vigía',
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="h-full overflow-hidden font-sans text-ink antialiased">
         {children}
         <ServiceWorkerRegister />
+        <PwaInstallPrompt />
       </body>
     </html>
   );

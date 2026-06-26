@@ -47,8 +47,14 @@ async function getPerformance(): Promise<PerformanceRegional[]> {
 export default async function HomePage() {
   let [obras, performance] = await Promise.all([getObras(), getPerformance()]);
 
-  // Fallback de verificación visual local (no afecta producción con BD)
-  if (performance.length === 0 && process.env.VIGIA_MOCK === '1') {
+  // Fallback de datos: si la BD no responde (sin conexión / vacía), usa el seed.
+  // - En desarrollo: siempre (para que cualquier integrante vea la app sin BD local).
+  // - En producción: solo si VIGIA_MOCK=1 (stopgap mientras se arregla la conexión).
+  // En cuanto la BD real responde con filas, se muestran los datos reales automáticamente.
+  if (
+    performance.length === 0 &&
+    (process.env.VIGIA_MOCK === '1' || process.env.NODE_ENV !== 'production')
+  ) {
     const { MOCK_OBRAS, MOCK_PERFORMANCE } = await import('@/lib/mock');
     obras = MOCK_OBRAS;
     performance = MOCK_PERFORMANCE;

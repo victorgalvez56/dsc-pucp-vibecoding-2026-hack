@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+web/node_modules/
+.pnp
+.pnp.js
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+!.env.local.example
+web/.env*.local
+
+# Data (crudos y procesados — no versionar dumps grandes)
+data/raw/
+data/processed/
+etl/data/
+
+# Next.js / build
+web/.next/
+web/out/
+web/build/
+.vercel
+
+# Misc
+.DS_Store
+*.log
+npm-debug.log*

@@ -68,7 +68,10 @@ export default function MapClient({ obras, performance, activeLayer, focus, onSe
     const isObras = layerId === 'obras';
     ['regional-halo', 'regional-core'].forEach((id) =>
       map.getLayer(id) && map.setLayoutProperty(id, 'visibility', isObras ? 'none' : 'visible'));
-    if (map.getLayer('obras-pts')) map.setLayoutProperty('obras-pts', 'visibility', isObras ? 'visible' : 'none');
+    if (map.getLayer('obras-pts')) {
+      map.setLayoutProperty('obras-pts', 'visibility', isObras ? 'visible' : 'none');
+      if (isObras) map.setPaintProperty('obras-pts', 'circle-color', LAYERS.obras.accent);
+    }
     if (!isObras) (map.getSource('regional') as GeoJSONSource | undefined)?.setData(regionalData(layerId) as never);
   }, [regionalData]);
 

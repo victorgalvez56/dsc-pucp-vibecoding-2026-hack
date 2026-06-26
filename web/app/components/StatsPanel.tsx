@@ -6,7 +6,6 @@ import { useGSAP } from '@gsap/react';
 import type { MapLayer, PerformanceRegional } from '@/lib/types';
 import { LAYERS } from '@/lib/layers';
 import { formatPENCompact, formatInt } from '@/lib/format';
-import Image from 'next/image';
 import Icon from './Icon';
 import CountUp from './CountUp';
 import { withLayer, type LayerInjectedProps } from '@/app/hoc/withLayer';
@@ -83,11 +82,6 @@ function StatsPanel({ activeLayer, rows, onHoverRegion, onSelectRegion }: Props)
       id="tour-stats"
       className="order-2 lg:order-none w-full lg:w-[350px] xl:w-[380px] shrink-0 lg:h-full lg:overflow-y-auto px-5 py-5 lg:px-6 lg:py-6 flex flex-col gap-5 lg:gap-6"
     >
-      {/* Logo */}
-      <div className="panel-block">
-        <Image src="/icons/vigia-logo.png" alt="Vigía" width={40} height={40} className="rounded-xl" priority />
-      </div>
-
       {/* Encabezado */}
       <div className="panel-block flex items-center justify-between">
         <div>

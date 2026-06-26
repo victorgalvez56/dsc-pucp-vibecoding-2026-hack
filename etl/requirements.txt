@@ -1,0 +1,13 @@
+# Dependencias de la capa Bronze (ingesta) — Vigía
+# Cliente Postgres moderno (psycopg 3) con binarios incluidos
+psycopg[binary]>=3.1
+# Descarga HTTP de APIs y CSV del Estado
+requests>=2.31
+# Scraping HTML (INFOBRAS / Contraloría)
+beautifulsoup4>=4.12
+# Carga de variables de entorno desde .env (DATABASE_URL)
+python-dotenv>=1.0
+# Barras de progreso en descargas / cargas largas
+tqdm>=4.66
+# Parseo incremental de JSON masivo (OCDS) sin cargar todo en memoria
+ijson>=3.2

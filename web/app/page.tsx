@@ -45,21 +45,10 @@ async function getPerformance(): Promise<PerformanceRegional[]> {
 }
 
 export default async function HomePage() {
-  let [obras, performance] = await Promise.all([getObras(), getPerformance()]);
+  const [obras, performance] = await Promise.all([getObras(), getPerformance()]);
 
-  // Fallback de datos: si la BD no responde (sin conexión / vacía), usa el seed.
-  // - En desarrollo: siempre (para que cualquier integrante vea la app sin BD local).
-  // - En producción: solo si VIGIA_MOCK=1 (stopgap mientras se arregla la conexión).
-  // En cuanto la BD real responde con filas, se muestran los datos reales automáticamente.
-  if (
-    performance.length === 0 &&
-    (process.env.VIGIA_MOCK === '1' || process.env.NODE_ENV !== 'production')
-  ) {
-    const { MOCK_OBRAS, MOCK_PERFORMANCE } = await import('@/lib/mock');
-    obras = MOCK_OBRAS;
-    performance = MOCK_PERFORMANCE;
-  }
-
+  // Solo datos reales: si la BD no responde, se muestra el estado vacío honesto
+  // (sin mock). Verifica que DATABASE_URL apunte al pooler de Supabase.
   if (performance.length === 0) {
     return (
       <div className="h-full grid place-items-center p-8">

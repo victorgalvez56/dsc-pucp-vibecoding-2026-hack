@@ -87,7 +87,9 @@ export default function AgentChat() {
       {open && (
         <div
           ref={panelRef}
-          className="absolute bottom-5 right-5 z-30 flex h-[clamp(360px,70vh,560px)] w-[clamp(300px,92vw,400px)] flex-col glass-strong rounded-[24px] shadow-float overflow-hidden"
+          className="absolute z-30 flex flex-col glass-strong shadow-float overflow-hidden
+                     bottom-2 left-2 right-2 h-[82%] rounded-[22px]
+                     sm:bottom-5 sm:right-5 sm:left-auto sm:h-[clamp(360px,70vh,560px)] sm:w-[400px] sm:rounded-[24px]"
         >
           {/* Header */}
           <div className="flex items-center gap-2.5 p-4 border-b border-black/5">
@@ -98,8 +100,8 @@ export default function AgentChat() {
               <div className="font-display text-[13px] font-bold tracking-tight text-ink">Agente Vigía</div>
               <div className="text-[10px] text-inksoft mt-0.5">Pregunta en español · datos reales</div>
             </div>
-            <button onClick={() => setOpen(false)} aria-label="Cerrar" className="grid place-items-center w-8 h-8 rounded-xl text-inksoft hover:text-ink hover:bg-black/5 transition-colors">
-              <Icon name="close" size={16} />
+            <button onClick={() => setOpen(false)} aria-label="Cerrar" className="grid place-items-center w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-black/[0.06] text-inksoft hover:text-ink hover:bg-black/10 active:scale-95 transition shrink-0">
+              <Icon name="close" size={18} />
             </button>
           </div>
 
@@ -167,13 +169,15 @@ export default function AgentChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Escribe tu pregunta…"
-              className="flex-1 bg-black/[0.04] rounded-xl px-3 py-2 text-[12.5px] text-ink placeholder:text-inkfaint outline-none focus:bg-black/[0.06] transition-colors"
+              enterKeyHint="send"
+              autoComplete="off"
+              className="flex-1 min-w-0 bg-black/[0.04] rounded-xl px-3 py-2.5 text-[16px] text-ink placeholder:text-inkfaint outline-none focus:bg-black/[0.06] transition-colors"
             />
             <button
               type="submit"
               disabled={loading || !input.trim()}
               aria-label="Enviar"
-              className="grid place-items-center w-9 h-9 rounded-xl text-white shrink-0 disabled:opacity-40 transition-opacity"
+              className="grid place-items-center w-10 h-10 sm:w-9 sm:h-9 rounded-xl text-white shrink-0 disabled:opacity-40 transition-opacity"
               style={{ background: 'linear-gradient(135deg,#818cf8,#f43f5e)' }}
             >
               <Icon name="chevron" size={16} />

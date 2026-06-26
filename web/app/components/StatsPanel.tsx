@@ -6,8 +6,10 @@ import { useGSAP } from '@gsap/react';
 import type { MapLayer, PerformanceRegional } from '@/lib/types';
 import { LAYERS } from '@/lib/layers';
 import { formatPENCompact, formatInt } from '@/lib/format';
+import Image from 'next/image';
 import Icon from './Icon';
 import CountUp from './CountUp';
+import { withLayer, type LayerInjectedProps } from '@/app/hoc/withLayer';
 import ProgressRing from './ProgressRing';
 import RegionRankList from './RegionRankList';
 
@@ -56,14 +58,14 @@ function strip(layer: MapLayer, rows: PerformanceRegional[]): { k: string; v: st
   }
 }
 
-interface Props {
-  layerId: MapLayer;
+interface Props extends LayerInjectedProps {
   rows: PerformanceRegional[];
   onHoverRegion?: (raw: string | null) => void;
   onSelectRegion?: (raw: string) => void;
 }
 
-export default function StatsPanel({ layerId, rows, onHoverRegion, onSelectRegion }: Props) {
+function StatsPanel({ activeLayer, rows, onHoverRegion, onSelectRegion }: Props) {
+  const layerId = activeLayer;
   const layer = LAYERS[layerId];
   const rootRef = useRef<HTMLDivElement>(null);
   const heroVal = layer.hero.value(rows);
@@ -80,6 +82,11 @@ export default function StatsPanel({ layerId, rows, onHoverRegion, onSelectRegio
       ref={rootRef}
       className="order-2 lg:order-none w-full lg:w-[350px] xl:w-[380px] shrink-0 lg:h-full lg:overflow-y-auto px-5 py-5 lg:px-6 lg:py-6 flex flex-col gap-5 lg:gap-6"
     >
+      {/* Logo */}
+      <div className="panel-block">
+        <Image src="/icons/vigia-logo.png" alt="Vigía" width={40} height={40} className="rounded-xl" priority />
+      </div>
+
       {/* Encabezado */}
       <div className="panel-block flex items-center justify-between">
         <div>
@@ -133,3 +140,5 @@ export default function StatsPanel({ layerId, rows, onHoverRegion, onSelectRegio
     </div>
   );
 }
+
+export default withLayer(StatsPanel);

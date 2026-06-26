@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Icon from './Icon';
 
 const NAV = [
@@ -13,12 +14,8 @@ export default function Sidebar() {
   return (
     <aside className="hidden lg:flex w-[72px] shrink-0 flex-col items-center py-5 glass-strong rounded-r-[28px] z-30">
       {/* Marca */}
-      <div
-        className="grid place-items-center w-11 h-11 rounded-2xl text-white shadow-pill mb-8"
-        style={{ background: 'linear-gradient(135deg, #818cf8, #f43f5e)' }}
-        title="Vigía"
-      >
-        <Icon name="shield" size={22} />
+      <div className="flex flex-col items-center gap-1.5 mb-8" title="Vigía">
+        <Image src="/icons/vigia-logo.png" alt="Vigía" width={70} height={70} priority />
       </div>
 
       {/* Navegación */}

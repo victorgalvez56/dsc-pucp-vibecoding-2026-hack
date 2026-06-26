@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { MapLayer, ObraRiesgo, PerformanceRegional } from '@/lib/types';
 import { LAYERS } from '@/lib/layers';
-import Sidebar from './Sidebar';
+import { LayerProvider } from '@/app/context/LayerContext';
 import StatsPanel from './StatsPanel';
 import LayerTabs from './LayerTabs';
 
@@ -69,10 +69,9 @@ export default function Dashboard({ obras, performance }: Props) {
   };
 
   return (
+    <LayerProvider activeLayer={activeLayer} changeLayer={onChangeLayer}>
     <div className="flex flex-col lg:flex-row h-full w-full overflow-y-auto lg:overflow-hidden">
-      <Sidebar />
       <StatsPanel
-        layerId={activeLayer}
         rows={performance}
         onSelectRegion={onSelectRegion}
       />
@@ -90,7 +89,7 @@ export default function Dashboard({ obras, performance }: Props) {
         {/* Barra superior */}
         <div className="absolute top-4 lg:top-5 left-4 lg:left-5 right-4 lg:right-5 flex items-start justify-between gap-3 z-20 pointer-events-none">
           <div className="pointer-events-auto max-w-[64%] overflow-x-auto no-scrollbar">
-            <LayerTabs active={activeLayer} onChange={onChangeLayer} />
+            <LayerTabs />
           </div>
           <div className="flex flex-col items-end gap-3 pointer-events-auto">
             <div className="glass-strong rounded-2xl px-3 lg:px-4 py-2 flex items-center gap-2.5">
@@ -123,5 +122,6 @@ export default function Dashboard({ obras, performance }: Props) {
         {selectedObra && <ForensicPanel obra={selectedObra} onClose={() => setSelectedObra(null)} />}
       </main>
     </div>
+    </LayerProvider>
   );
 }

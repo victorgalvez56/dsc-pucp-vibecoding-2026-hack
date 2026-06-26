@@ -52,7 +52,7 @@ WITH ppto AS (
                         SUM(COALESCE(pim, 0)) * 100
                    ELSE 0 END, 1)                                     AS pct_ejecucion
     FROM presupuesto
-    WHERE ano = EXTRACT(YEAR FROM CURRENT_DATE)::int
+    WHERE ano = (SELECT MAX(ano) FROM presupuesto)
       AND region IS NOT NULL
     GROUP BY region
 ),
@@ -73,7 +73,7 @@ pln AS (
         SUM(n_trabajadores)            AS n_empleados,
         ROUND(AVG(promedio_sueldo), 0) AS sueldo_promedio
     FROM planilla
-    WHERE ano = EXTRACT(YEAR FROM CURRENT_DATE)::int
+    WHERE ano = (SELECT MAX(ano) FROM planilla)
       AND region IS NOT NULL
     GROUP BY region
 ),

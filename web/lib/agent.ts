@@ -24,8 +24,33 @@ function fmtPEN(n: number | null | undefined): string {
   return `S/ ${Math.round(v)}`;
 }
 
+const fmtInt = (n: number | null | undefined) => Number(n ?? 0).toLocaleString('es-PE');
+
 const titleCase = (s: string | null) =>
   (s ?? '').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+
+// Acorta nombres de contratistas/entidades largos para que la respuesta sea legible.
+function shortName(s: string | null): string {
+  if (!s) return 'Sin nombre';
+  let x = titleCase(s.split(' - ')[0])
+    .replace(/Sociedad Anonima Cerrada/gi, 'S.A.C.')
+    .replace(/Sociedad Comercial De Responsabilidad Limitada/gi, 'S.R.L.')
+    .replace(/Empresa Individual De Responsabilidad Limitada/gi, 'E.I.R.L.')
+    .replace(/Sociedad Anonima/gi, 'S.A.')
+    .replace(/Contratistas Generales/gi, 'Contratistas')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (x.length > 40) {
+    x = x.slice(0, 40);
+    const sp = x.lastIndexOf(' ');
+    x = (sp > 20 ? x.slice(0, sp) : x).trim() + '…';
+  }
+  return x;
+}
+
+// "A, B y C" — solo con los elementos presentes.
+const joinY = (items: string[]) =>
+  items.length <= 1 ? items.join('') : `${items.slice(0, -1).join(', ')} y ${items[items.length - 1]}`;
 
 // 25 regiones del Perú (para detectar a cuál se refiere la pregunta).
 const REGIONS = [
@@ -37,7 +62,6 @@ const REGIONS = [
 
 function detectRegion(q: string): string | null {
   const n = norm(q).replace(/cuzco/g, 'cusco'); // variante común
-  // ordena por longitud desc para que 'la libertad' gane sobre 'lima' etc.
   for (const r of [...REGIONS].sort((a, b) => b.length - a.length)) {
     if (n.includes(r)) return r;
   }
@@ -72,8 +96,7 @@ export async function askAgent(question: string): Promise<AgentResult> {
   const region = detectRegion(q);
   const flag = FLAGS.find((f) => f.test.test(n));
 
-  // Intención 1 — ranking de regiones por OBRAS/RIESGO (requiere ese contexto para
-  // no acaparar preguntas de presupuesto/servicios/planilla que tienen su propia intención).
+  // Intención 1 — ranking de regiones por OBRAS/RIESGO
   if (/regi(on|ones)/.test(n) && /(obra|riesgo|score|sospechos|marcad|peor)/.test(n)) {
     const byScore = /score|riesgo promedio|peor|sospechos/.test(n);
     const orderCol = byScore ? 'score_promedio' : 'n_obras_riesgo';
@@ -81,30 +104,27 @@ export async function askAgent(question: string): Promise<AgentResult> {
                         monto_riesgo::float8 AS monto_riesgo
                  FROM performance_regional
                  ORDER BY ${orderCol} DESC, monto_riesgo DESC LIMIT 5`;
-    const rows = await query(sql, []);
-    const lines = rows.map((r: any, i: number) =>
-      `${i + 1}. ${titleCase(r.region)} — ${r.n_obras_riesgo} obras en riesgo · score ${r.score_promedio} · ${fmtPEN(r.monto_riesgo)} en riesgo`);
-    return {
-      answer: `Regiones con ${byScore ? 'mayor score de riesgo' : 'más obras en riesgo'}:\n\n${lines.join('\n')}`,
-      sql: renderSql(sql, []), rowCount: rows.length, rows,
-    };
+    const rows: any[] = await query(sql, []);
+    const r0 = rows[0];
+    const rest = joinY(rows.slice(1, 3).map((r) => `${titleCase(r.region)} (${r.n_obras_riesgo})`));
+    const answer = byScore
+      ? `La más comprometida es ${titleCase(r0.region)}, con un score promedio de ${r0.score_promedio}/100. Le siguen ${rest}.`
+      : `${titleCase(r0.region)} encabeza con ${r0.n_obras_riesgo} obras en riesgo (${fmtPEN(r0.monto_riesgo)} en juego). Le siguen ${rest}.`;
+    return { answer, sql: renderSql(sql, []), rowCount: rows.length, rows };
   }
 
   // Intención 2 — ranking de contratistas reincidentes
   if (/contratist|empresa/.test(n) && /(mas|mayor|reincident|repit|ranking|top)/.test(n) && !flag) {
     const sql = `SELECT contratista, ruc_contratista AS ruc, COUNT(*)::int AS n_obras,
-                        MAX(red_flag_score)::int AS score_max,
-                        SUM(monto_contrato)::float8 AS monto
+                        MAX(red_flag_score)::int AS score_max, SUM(monto_contrato)::float8 AS monto
                  FROM obras_riesgo WHERE contratista IS NOT NULL
                  GROUP BY contratista, ruc_contratista
                  ORDER BY n_obras DESC, score_max DESC LIMIT 5`;
-    const rows = await query(sql, []);
-    const lines = rows.map((r: any, i: number) =>
-      `${i + 1}. ${r.contratista} — ${r.n_obras} obras marcadas · score máx ${r.score_max} · ${fmtPEN(r.monto)}`);
-    return {
-      answer: `Contratistas con más obras marcadas como riesgo:\n\n${lines.join('\n')}`,
-      sql: renderSql(sql, []), rowCount: rows.length, rows,
-    };
+    const rows: any[] = await query(sql, []);
+    const r0 = rows[0];
+    const rest = joinY(rows.slice(1, 3).map((r) => `${shortName(r.contratista)} (${r.n_obras})`));
+    const answer = `El más reincidente es ${shortName(r0.contratista)}, con ${r0.n_obras} obras marcadas por ${fmtPEN(r0.monto)}. Le siguen ${rest}.`;
+    return { answer, sql: renderSql(sql, []), rowCount: rows.length, rows };
   }
 
   // Intención 3 — presupuesto / ejecución
@@ -112,13 +132,11 @@ export async function askAgent(question: string): Promise<AgentResult> {
     const asc = /menos|baja|peor|menor/.test(n);
     const sql = `SELECT region, pim_total::float8, devengado_total::float8, pct_ejecucion::float8
                  FROM performance_regional ORDER BY pct_ejecucion ${asc ? 'ASC' : 'DESC'} LIMIT 5`;
-    const rows = await query(sql, []);
-    const lines = rows.map((r: any, i: number) =>
-      `${i + 1}. ${titleCase(r.region)} — ${r.pct_ejecucion}% ejecutado · PIM ${fmtPEN(r.pim_total)}`);
-    return {
-      answer: `Regiones con ${asc ? 'menor' : 'mayor'} ejecución presupuestal:\n\n${lines.join('\n')}`,
-      sql: renderSql(sql, []), rowCount: rows.length, rows,
-    };
+    const rows: any[] = await query(sql, []);
+    const r0 = rows[0];
+    const sigue = rows[1] ? ` Le sigue ${titleCase(rows[1].region)} (${rows[1].pct_ejecucion}%).` : '';
+    const answer = `${titleCase(r0.region)} ${asc ? 'es la que menos ejecuta' : 'lidera la ejecución'}: ${r0.pct_ejecucion}% de su presupuesto (PIM de ${fmtPEN(r0.pim_total)}).${sigue}`;
+    return { answer, sql: renderSql(sql, []), rowCount: rows.length, rows };
   }
 
   // Intención 4 — servicios básicos (escuelas / hospitales / postas)
@@ -127,28 +145,23 @@ export async function askAgent(question: string): Promise<AgentResult> {
     if (/escuela|colegio/.test(n)) { col = 'n_escuelas'; label = 'escuelas activas'; }
     else if (/hospital/.test(n)) { col = 'n_hospitales'; label = 'hospitales'; }
     else if (/posta/.test(n)) { col = 'n_postas'; label = 'postas de salud'; }
-    const sql = `SELECT region, ${col}::int AS valor FROM performance_regional
-                 ORDER BY ${col} DESC LIMIT 5`;
-    const rows = await query(sql, []);
-    const lines = rows.map((r: any, i: number) =>
-      `${i + 1}. ${titleCase(r.region)} — ${Number(r.valor).toLocaleString('es-PE')} ${label}`);
-    return {
-      answer: `Regiones con más ${label}:\n\n${lines.join('\n')}`,
-      sql: renderSql(sql, []), rowCount: rows.length, rows,
-    };
+    const sql = `SELECT region, ${col}::int AS valor FROM performance_regional ORDER BY ${col} DESC LIMIT 5`;
+    const rows: any[] = await query(sql, []);
+    const r0 = rows[0];
+    const rest = joinY(rows.slice(1, 3).map((r) => `${titleCase(r.region)} (${fmtInt(r.valor)})`));
+    const answer = `${titleCase(r0.region)} concentra más ${label}: ${fmtInt(r0.valor)}. Le siguen ${rest}.`;
+    return { answer, sql: renderSql(sql, []), rowCount: rows.length, rows };
   }
 
-  // Intención 4b — planilla / empleados públicos / sueldos
+  // Intención 4b — planilla / empleados públicos
   if (/empleado|planilla|trabajador|sueldo|salario/.test(n)) {
     const sql = `SELECT region, n_empleados::int, sueldo_promedio::float8
                  FROM performance_regional ORDER BY n_empleados DESC LIMIT 5`;
-    const rows = await query(sql, []);
-    const lines = rows.map((r: any, i: number) =>
-      `${i + 1}. ${titleCase(r.region)} — ${Number(r.n_empleados).toLocaleString('es-PE')} empleados públicos`);
-    return {
-      answer: `Regiones con más empleados públicos en planilla:\n\n${lines.join('\n')}`,
-      sql: renderSql(sql, []), rowCount: rows.length, rows,
-    };
+    const rows: any[] = await query(sql, []);
+    const r0 = rows[0];
+    const rest = joinY(rows.slice(1, 3).map((r) => `${titleCase(r.region)} (${fmtInt(r.n_empleados)})`));
+    const answer = `${titleCase(r0.region)} concentra más empleados públicos: ${fmtInt(r0.n_empleados)}. Le siguen ${rest}.`;
+    return { answer, sql: renderSql(sql, []), rowCount: rows.length, rows };
   }
 
   // Intención 5 — obras filtradas por bandera y/o región (el caso forense central)
@@ -156,7 +169,6 @@ export async function askAgent(question: string): Promise<AgentResult> {
   const params: unknown[] = [];
   if (flag) { params.push(flag.like); where.push(`red_flag_reasons::text ILIKE $${params.length}`); }
   if (region) { params.push(`%${region}%`); where.push(`region ILIKE $${params.length}`); }
-  // "paralizada" también filtra por estado_obra (señal más directa)
   if (flag?.label === 'obra paralizada') {
     where[where.length - 1] = `(${where[where.length - 1]} OR estado_obra ILIKE '%paraliz%')`;
   }
@@ -168,30 +180,24 @@ export async function askAgent(question: string): Promise<AgentResult> {
                       monto_contrato::float8 AS monto, red_flag_score, estado_obra
                FROM obras_riesgo ${whereSql}
                ORDER BY ${orderCol} DESC NULLS LAST LIMIT 8`;
-  const rows = await query(sql, params);
+  const rows: any[] = await query(sql, params);
+
+  // Descripción natural del filtro: "paralizadas" / "con contratista sancionado" + "en Región".
+  const descr = flag?.label === 'obra paralizada' ? ' paralizadas' : flag ? ` con ${flag.label}` : '';
+  const loc = region ? ` en ${titleCase(region)}` : '';
 
   if (rows.length === 0) {
     return {
-      answer: `No encontré obras${flag ? ` con ${flag.label}` : ''}${region ? ` en ${titleCase(region)}` : ''}. ` +
-        `Probá con otra región o pregunta (ej. "obras paralizadas", "contratistas sancionados en Lima").`,
+      answer: `No encontré obras${descr}${loc}. Probá con otra región, o con "obras paralizadas" o "sobrecosto".`,
       sql: renderSql(sql, params), rowCount: 0, rows,
     };
   }
 
-  const lines = rows.slice(0, 6).map((r: any, i: number) =>
-    `${i + 1}. ${r.contratista ?? r.entidad} — ${(r.objeto ?? '').slice(0, 70)} ` +
-    `(${titleCase(r.region)}) · ${fmtPEN(r.monto)} · score ${r.red_flag_score}` +
-    `${r.estado_obra ? ` · ${r.estado_obra}` : ''}`);
+  const bullets = rows.slice(0, 3).map((r) =>
+    `• ${shortName(r.contratista ?? r.entidad)} — ${fmtPEN(r.monto)} · riesgo ${r.red_flag_score}${r.estado_obra ? ` · ${r.estado_obra.toLowerCase()}` : ''}`,
+  ).join('\n');
+  const lead = `Encontré ${rows.length} obra${rows.length === 1 ? '' : 's'}${descr}${loc}. ${orderByMonto ? 'Las de mayor monto' : 'Las más riesgosas'}:`;
+  const more = rows.length > 3 ? `\n\n…y ${rows.length - 3} más.` : '';
 
-  const filtro = [flag && flag.label, region && `en ${titleCase(region)}`].filter(Boolean).join(' ');
-  const header = orderByMonto
-    ? `Obras${filtro ? ` (${filtro})` : ''} con mayor monto`
-    : `Obras${filtro ? ` (${filtro})` : ''} con mayor riesgo`;
-
-  return {
-    answer: `${header} — ${rows.length} encontrada${rows.length === 1 ? '' : 's'}:\n\n${lines.join('\n')}`,
-    sql: renderSql(sql, params),
-    rowCount: rows.length,
-    rows,
-  };
+  return { answer: `${lead}\n\n${bullets}${more}`, sql: renderSql(sql, params), rowCount: rows.length, rows };
 }

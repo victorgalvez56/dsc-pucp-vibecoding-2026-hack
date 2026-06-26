@@ -80,6 +80,7 @@ function StatsPanel({ activeLayer, rows, onHoverRegion, onSelectRegion }: Props)
   return (
     <div
       ref={rootRef}
+      id="tour-stats"
       className="order-2 lg:order-none w-full lg:w-[350px] xl:w-[380px] shrink-0 lg:h-full lg:overflow-y-auto px-5 py-5 lg:px-6 lg:py-6 flex flex-col gap-5 lg:gap-6"
     >
       {/* Logo */}

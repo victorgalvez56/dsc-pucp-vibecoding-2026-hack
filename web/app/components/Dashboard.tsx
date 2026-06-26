@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import type { MapLayer, ObraRiesgo, PerformanceRegional } from '@/lib/types';
 import { LAYERS } from '@/lib/layers';
+import Image from 'next/image';
 import { LayerProvider } from '@/app/context/LayerContext';
 import StatsPanel from './StatsPanel';
 import LayerTabs from './LayerTabs';
@@ -19,9 +20,9 @@ const MapClient = dynamic(() => import('./MapClient'), {
 });
 import FloatingRegionCards from './FloatingRegionCards';
 import MapInsightCards from './MapInsightCards';
-import Legend from './Legend';
 import ForensicPanel from './ForensicPanel';
 import Icon from './Icon';
+import TourModal from './TourModal';
 
 interface Props {
   obras: ObraRiesgo[];
@@ -77,7 +78,7 @@ export default function Dashboard({ obras, performance }: Props) {
       />
 
       {/* Lienzo del globo */}
-      <main className="order-1 lg:order-none relative flex-1 min-h-[58vh] lg:min-h-0 m-3 lg:my-3 lg:mr-3 lg:ml-0 rounded-[24px] lg:rounded-[28px] overflow-hidden glass shadow-glass">
+      <main id="tour-map" className="order-1 lg:order-none relative flex-1 min-h-[58vh] lg:min-h-0 m-3 lg:my-3 lg:mr-3 lg:ml-0 rounded-[24px] lg:rounded-[28px] overflow-hidden glass shadow-glass">
         <MapClient
           obras={obras}
           performance={performance}
@@ -93,17 +94,11 @@ export default function Dashboard({ obras, performance }: Props) {
           </div>
           <div className="flex flex-col items-end gap-3 pointer-events-auto">
             <div className="glass-strong rounded-2xl px-3 lg:px-4 py-2 flex items-center gap-2.5">
-              <span className="grid place-items-center w-6 h-6 rounded-lg text-white" style={{ background: 'linear-gradient(135deg,#818cf8,#f43f5e)' }}>
-                <Icon name="shield" size={13} />
-              </span>
+              <Image src="/icons/logotipo.png" alt="Vigía" width={24} height={8} className="object-contain shrink-0" />
               <div className="leading-none hidden sm:block">
                 <div className="font-display text-[13px] font-bold tracking-tight text-ink">VIGÍA</div>
-                <div className="text-[9.5px] text-inksoft">Estado Peruano · 2025</div>
               </div>
               <span className="w-1.5 h-1.5 rounded-full bg-servicios animate-pulse" title="datos activos" />
-            </div>
-            <div className="hidden sm:block">
-              <Legend layerId={activeLayer} />
             </div>
           </div>
         </div>
@@ -122,6 +117,7 @@ export default function Dashboard({ obras, performance }: Props) {
         {selectedObra && <ForensicPanel obra={selectedObra} onClose={() => setSelectedObra(null)} />}
       </main>
     </div>
+    <TourModal />
     </LayerProvider>
   );
 }

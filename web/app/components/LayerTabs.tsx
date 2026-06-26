@@ -6,7 +6,7 @@ import { withLayer, type LayerInjectedProps } from '@/app/hoc/withLayer';
 
 function LayerTabs({ activeLayer, changeLayer }: LayerInjectedProps) {
   return (
-    <div className="inline-flex items-center gap-1 p-1 rounded-2xl glass-strong">
+    <div id="tour-layers" className="inline-flex items-center gap-1 p-1 rounded-2xl glass-strong">
       {LAYER_ORDER.map((id) => {
         const cfg = LAYERS[id];
         const isActive = id === activeLayer;

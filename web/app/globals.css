@@ -59,6 +59,12 @@
 ::-webkit-scrollbar-thumb { background: rgba(118, 124, 170, 0.35); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(118, 124, 170, 0.55); }
 
+/* PWA install banner entrance */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 /* Respeto a prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; }

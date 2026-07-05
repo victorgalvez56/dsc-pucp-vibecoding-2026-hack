@@ -1,5 +1,13 @@
 # Vigía
 
+> 🏆 **2.° Lugar — Hackathon DSC PUCP · Vibecoding 2026** · organizada por [@dsc.pucp](https://www.instagram.com/dsc.pucp/) × [@gdgopen](https://www.instagram.com/gdgopen/)
+>
+> 🌐 **Demo en vivo:** [dsc-pucp-vibecoding-2026-hack.vercel.app](https://dsc-pucp-vibecoding-2026-hack.vercel.app)
+
+![Premiación — Vigía, 2.º Lugar en la Hackathon DSC PUCP · Vibecoding 2026](docs/img/premiacion-2do-lugar.jpg)
+
+---
+
 > El Estado peruano gestiona más de S/ 220 mil millones al año.
 > **Vigía** integra cuatro fuentes de datos abiertos del Estado en un único mapa
 > interactivo y responde una pregunta que hoy no tiene respuesta accesible:
